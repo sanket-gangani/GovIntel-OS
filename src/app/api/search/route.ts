@@ -3,6 +3,9 @@ import { searchEmbeddings } from "@/lib/rag/retrieval";
 import { SearchResponse } from "@/lib/rag/types";
 import { getUser } from "@/lib/auth";
 
+// Allow up to 60 seconds for this route (model loading on cold start is slow)
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const user = await getUser();

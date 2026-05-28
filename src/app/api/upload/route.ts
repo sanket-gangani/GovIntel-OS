@@ -7,8 +7,13 @@ import { generateEmbeddings } from "@/lib/rag/embeddings";
 import { UploadResponse } from "@/lib/rag/types";
 import { getUser, prisma } from "@/lib/auth";
 
+// Allow up to 60 seconds for this route (model download + embedding generation is slow)
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
+    console.log("[Upload] Starting upload handler...");
+
     const user = await getUser();
     if (!user) {
       return NextResponse.json<UploadResponse>(
@@ -16,6 +21,7 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+    console.log("[Upload] Authenticated user:", user.id);
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -34,21 +40,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("[Upload] File received:", file.name, "size:", file.size);
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Extract text directly from buffer (memory), skipping local disk write for Vercel
+    // Step 1: Extract text directly from buffer (memory), skipping local disk write for Vercel
+    console.log("[Upload] Step 1: Extracting text from PDF...");
     const extractedDocument = await extractTextFromPDF(buffer, file.name, file.size);
     extractedDocument.userId = user.id;
+    console.log("[Upload] Step 1 done. Extracted", extractedDocument.rawText.length, "chars from", extractedDocument.pageCount, "pages");
 
-    // 1. Clean the raw text before chunking
+    // Step 2: Clean the raw text before chunking
+    console.log("[Upload] Step 2: Cleaning text...");
     extractedDocument.rawText = cleanText(extractedDocument.rawText);
+    console.log("[Upload] Step 2 done. Cleaned text length:", extractedDocument.rawText.length);
 
-    // 2. Chunk the cleaned text
+    // Step 3: Chunk the cleaned text
+    console.log("[Upload] Step 3: Chunking text...");
     const chunks = chunkText(extractedDocument);
+    console.log("[Upload] Step 3 done. Created", chunks.length, "chunks");
     
-    // 3. Filter out semantically noisy/junk chunks
+    // Step 4: Filter out semantically noisy/junk chunks
+    console.log("[Upload] Step 4: Filtering chunks...");
     const validChunks = chunks.filter(chunk => isSemanticallyValid(chunk.text));
+    console.log("[Upload] Step 4 done.", validChunks.length, "valid chunks out of", chunks.length);
     
     if (validChunks.length === 0) {
       return NextResponse.json<UploadResponse>(
@@ -57,10 +73,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Generate semantic embeddings for valid chunks
+    // Step 5: Generate semantic embeddings for valid chunks
+    console.log("[Upload] Step 5: Generating embeddings (this may take a while on cold start)...");
     const embeddings = await generateEmbeddings(validChunks);
+    console.log("[Upload] Step 5 done. Generated", embeddings.length, "embeddings");
     
-    // 5. Save all chunks and embeddings to PostgreSQL via Prisma
+    // Step 6: Save all chunks and embeddings to PostgreSQL via Prisma
+    console.log("[Upload] Step 6: Saving to database...");
     await prisma.documentChunk.createMany({
       data: embeddings.map(emb => ({
         id: emb.id,
@@ -72,6 +91,7 @@ export async function POST(req: NextRequest) {
         vector: emb.vector // Prisma automatically handles storing number[] as Json
       }))
     });
+    console.log("[Upload] Step 6 done. Saved to database successfully.");
 
     return NextResponse.json<UploadResponse>(
       { 
@@ -82,7 +102,8 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Upload API Error:", error);
+    console.error("[Upload] FATAL ERROR:", error);
+    console.error("[Upload] Error stack:", error instanceof Error ? error.stack : "no stack");
     return NextResponse.json<UploadResponse>(
       { success: false, message: "Failed to process the upload.", error: String(error) },
       { status: 500 }

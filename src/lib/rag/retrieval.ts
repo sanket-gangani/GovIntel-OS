@@ -1,10 +1,6 @@
 import { ChunkEmbedding, SearchResult } from "./types";
-import { readFile } from "fs/promises";
-import path from "path";
-import fs from "fs";
 import { env, pipeline } from "@xenova/transformers";
-
-const EMBEDDINGS_FILE = path.join(process.cwd(), "data", "embeddings.json");
+import { prisma } from "@/lib/auth";
 
 // Ensure environments match the embeddings generator
 env.allowLocalModels = false;
@@ -59,7 +55,6 @@ function deriveTags(text: string): string[] {
   return tags.slice(0, 2);
 }
 
-import { prisma } from "@/lib/auth";
 
 /**
  * Searches the local embeddings file for chunks that are semantically similar to the query.

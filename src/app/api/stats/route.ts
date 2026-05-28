@@ -51,7 +51,7 @@ export async function GET() {
         docMap.set(chunk.documentId, {
           id: chunk.documentId,
           name: chunk.documentName,
-          createdAt: chunk.createdAt
+          createdAt: chunk.createdAt.toISOString()
         });
       }
 

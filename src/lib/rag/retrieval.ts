@@ -1,24 +1,6 @@
 import { ChunkEmbedding, SearchResult } from "./types";
-import { env, pipeline } from "@xenova/transformers";
 import { prisma } from "@/lib/auth";
-
-// Ensure environments match the embeddings generator
-env.allowLocalModels = false;
-env.useBrowserCache = false;
-
-class SearchEmbedderPipeline {
-  static task = "feature-extraction" as const;
-  static model = "Xenova/all-MiniLM-L6-v2";
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static instance: any = null;
-
-  static async getInstance(progress_callback?: (progress: unknown) => void) {
-    if (this.instance === null) {
-      this.instance = await pipeline(this.task, this.model, { progress_callback });
-    }
-    return this.instance;
-  }
-}
+import { generateSimpleVector } from "./embeddings";
 
 /**
  * Computes cosine similarity between two vectors.
@@ -106,10 +88,8 @@ export async function searchEmbeddings(
   if (chunkEmbeddings.length === 0) return [];
 
   // Generate embedding for the query
-  console.log(`[Search] Generating embedding for query: "${query}"`);
-  const embedder = await SearchEmbedderPipeline.getInstance();
-  const output = await embedder(query, { pooling: "mean", normalize: true });
-  const queryVector = Array.from(output.data) as number[];
+  console.log(`[Search] Generating fast JS vector for query: "${query}"`);
+  const queryVector = generateSimpleVector(query);
 
   // Calculate similarity for all chunks
   const scoredChunks = chunkEmbeddings.map((chunk) => {

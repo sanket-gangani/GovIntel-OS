@@ -63,23 +63,3 @@ export async function generateEmbeddings(chunks: DocumentChunk[]): Promise<Chunk
   console.log(`[Embedder] Finished generating ${embeddings.length} vectors.`);
   return embeddings;
 }
-
-/**
- * Appends new embeddings to the local data/embeddings.json file.
- */
-export async function saveEmbeddingsLocally(newEmbeddings: ChunkEmbedding[]): Promise<void> {
-  let existingEmbeddings: ChunkEmbedding[] = [];
-  
-  if (fs.existsSync(EMBEDDINGS_FILE)) {
-    try {
-      const fileData = await readFile(EMBEDDINGS_FILE, "utf-8");
-      existingEmbeddings = JSON.parse(fileData);
-    } catch (e) {
-      console.warn("Failed to parse existing embeddings.json. Overwriting.");
-    }
-  }
-
-  existingEmbeddings.push(...newEmbeddings);
-
-  await writeFile(EMBEDDINGS_FILE, JSON.stringify(existingEmbeddings, null, 2), "utf-8");
-}

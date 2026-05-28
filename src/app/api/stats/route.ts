@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
-import { readFile } from "fs/promises";
-import path from "path";
-import fs from "fs";
-import { DocumentChunk, SystemStats } from "@/lib/rag/types";
-import { getUser } from "@/lib/auth";
-
-const CHUNKS_FILE = path.join(process.cwd(), "data", "chunks.json");
+import { SystemStats } from "@/lib/rag/types";
+import { getUser, prisma } from "@/lib/auth";
 
 export async function GET() {
   try {
@@ -14,7 +9,18 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!fs.existsSync(CHUNKS_FILE)) {
+    // Fetch chunks directly from PostgreSQL
+    const chunks = await prisma.documentChunk.findMany({
+      where: { userId: user.id },
+      select: {
+        documentId: true,
+        documentName: true,
+        text: true,
+        createdAt: true
+      }
+    });
+
+    if (chunks.length === 0) {
       return NextResponse.json<SystemStats>({
         documentCount: 0,
         chunkCount: 0,
@@ -28,12 +34,6 @@ export async function GET() {
         }
       });
     }
-
-    const fileData = await readFile(CHUNKS_FILE, "utf-8");
-    const allChunks: DocumentChunk[] = JSON.parse(fileData);
-    
-    // Filter chunks by the current user's ID
-    const chunks = allChunks.filter(c => c.userId === user.id);
 
     const docMap = new Map<string, { id: string, name: string, createdAt: string }>();
     

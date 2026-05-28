@@ -14,10 +14,23 @@ datasource db {
 
 model User {
   id         String   @id @default(uuid())
-  name       String
   email      String   @unique
   password   String
+  name       String
   department String?
   createdAt  DateTime @default(now())
   lastLogin  DateTime @default(now())
+}
+
+model DocumentChunk {
+  id           String   @id @default(uuid())
+  documentId   String
+  documentName String
+  text         String
+  index        Int
+  userId       String
+  createdAt    DateTime @default(now())
+  
+  // Store the 384-dimensional vector as a JSON array for JS-based cosine similarity
+  vector       Json
 }

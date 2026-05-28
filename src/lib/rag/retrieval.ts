@@ -59,6 +59,8 @@ function deriveTags(text: string): string[] {
   return tags.slice(0, 2);
 }
 
+import { prisma } from "@/lib/auth";
+
 /**
  * Searches the local embeddings file for chunks that are semantically similar to the query.
  * @param query The natural language query
@@ -72,26 +74,36 @@ export async function searchEmbeddings(
   userId?: string
 ): Promise<SearchResult[]> {
   if (!query || query.trim() === "") return [];
+  if (!userId) return []; // Require userId for isolated search
 
-  // Load existing embeddings
-  if (!fs.existsSync(EMBEDDINGS_FILE)) {
-    console.warn("No embeddings file found. Please upload documents first.");
-    return [];
-  }
-
+  // Load existing embeddings from PostgreSQL
   let chunkEmbeddings: ChunkEmbedding[] = [];
   try {
-    const fileData = await readFile(EMBEDDINGS_FILE, "utf-8");
-    const allEmbeddings: ChunkEmbedding[] = JSON.parse(fileData);
-    
-    // Filter by userId if provided
-    if (userId) {
-      chunkEmbeddings = allEmbeddings.filter(e => e.userId === userId);
-    } else {
-      chunkEmbeddings = allEmbeddings;
-    }
+    const rawChunks = await prisma.documentChunk.findMany({
+      where: { userId: userId },
+      select: {
+        id: true,
+        documentId: true,
+        documentName: true,
+        text: true,
+        vector: true,
+        createdAt: true
+      }
+    });
+
+    chunkEmbeddings = rawChunks.map(c => ({
+      id: c.id,
+      chunkId: c.id,
+      documentId: c.documentId,
+      documentName: c.documentName,
+      text: c.text,
+      vector: c.vector as number[], // Cast Json back to number[]
+      createdAt: c.createdAt.toISOString(),
+      userId: userId
+    }));
+
   } catch (error) {
-    console.error("Failed to read embeddings.json:", error);
+    console.error("Failed to read embeddings from Prisma:", error);
     return [];
   }
 

@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile } from "fs/promises";
-import path from "path";
 import { extractTextFromPDF } from "@/lib/rag/parser";
 import { cleanText } from "@/lib/rag/cleaner";
 import { isSemanticallyValid } from "@/lib/rag/chunk-filter";
-import { chunkText, saveChunksLocally } from "@/lib/rag/chunker";
-import { generateEmbeddings, saveEmbeddingsLocally } from "@/lib/rag/embeddings";
+import { chunkText } from "@/lib/rag/chunker";
+import { generateEmbeddings } from "@/lib/rag/embeddings";
 import { UploadResponse } from "@/lib/rag/types";
-import { getUser } from "@/lib/auth";
+import { getUser, prisma } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,12 +37,7 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Save locally to uploads/ directory
-    const uploadDir = path.join(process.cwd(), "uploads");
-    const filePath = path.join(uploadDir, file.name);
-    await writeFile(filePath, buffer);
-
-    // Extract text from the PDF
+    // Extract text directly from buffer (memory), skipping local disk write for Vercel
     const extractedDocument = await extractTextFromPDF(buffer, file.name, file.size);
     extractedDocument.userId = user.id;
 
@@ -63,12 +56,22 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    
-    await saveChunksLocally(validChunks);
 
-    // 4. Generate local semantic embeddings for valid chunks
+    // 4. Generate semantic embeddings for valid chunks
     const embeddings = await generateEmbeddings(validChunks);
-    await saveEmbeddingsLocally(embeddings);
+    
+    // 5. Save all chunks and embeddings to PostgreSQL via Prisma
+    await prisma.documentChunk.createMany({
+      data: embeddings.map(emb => ({
+        id: emb.id,
+        documentId: emb.documentId,
+        documentName: emb.documentName,
+        text: emb.text,
+        index: validChunks.find(c => c.id === emb.chunkId)?.index || 0,
+        userId: user.id,
+        vector: emb.vector // Prisma automatically handles storing number[] as Json
+      }))
+    });
 
     return NextResponse.json<UploadResponse>(
       { 

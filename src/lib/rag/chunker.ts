@@ -90,22 +90,3 @@ function createChunkObj(doc: ExtractedDocument, text: string, index: number): Do
   };
 }
 
-/**
- * Appends new chunks to the local data/chunks.json file.
- */
-export async function saveChunksLocally(newChunks: DocumentChunk[]): Promise<void> {
-  let existingChunks: DocumentChunk[] = [];
-  
-  if (fs.existsSync(CHUNKS_FILE)) {
-    try {
-      const fileData = await readFile(CHUNKS_FILE, "utf-8");
-      existingChunks = JSON.parse(fileData);
-    } catch (e) {
-      console.warn("Failed to parse existing chunks.json. Overwriting.");
-    }
-  }
-
-  existingChunks.push(...newChunks);
-
-  await writeFile(CHUNKS_FILE, JSON.stringify(existingChunks, null, 2), "utf-8");
-}

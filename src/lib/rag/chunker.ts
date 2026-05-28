@@ -85,7 +85,8 @@ function createChunkObj(doc: ExtractedDocument, text: string, index: number): Do
     text,
     index,
     metadata: doc.metadata,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    userId: doc.userId
   };
 }
 

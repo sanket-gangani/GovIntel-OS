@@ -12,6 +12,7 @@ export interface ExtractedDocument {
   metadata: DocumentMetadata;
   rawText: string;
   pageCount: number;
+  userId?: string;
 }
 
 export interface UploadResponse {
@@ -29,6 +30,7 @@ export interface DocumentChunk {
   index: number;
   metadata?: any;
   createdAt: string;
+  userId?: string;
 }
 
 export interface ChunkEmbedding {
@@ -40,6 +42,7 @@ export interface ChunkEmbedding {
   vector: number[];
   metadata?: any;
   createdAt: string;
+  userId?: string;
 }
 
 export interface SearchResult {

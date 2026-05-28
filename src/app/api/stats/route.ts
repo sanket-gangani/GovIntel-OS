@@ -3,11 +3,17 @@ import { readFile } from "fs/promises";
 import path from "path";
 import fs from "fs";
 import { DocumentChunk, SystemStats } from "@/lib/rag/types";
+import { getUser } from "@/lib/auth";
 
 const CHUNKS_FILE = path.join(process.cwd(), "data", "chunks.json");
 
 export async function GET() {
   try {
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     if (!fs.existsSync(CHUNKS_FILE)) {
       return NextResponse.json<SystemStats>({
         documentCount: 0,
@@ -24,7 +30,10 @@ export async function GET() {
     }
 
     const fileData = await readFile(CHUNKS_FILE, "utf-8");
-    const chunks: DocumentChunk[] = JSON.parse(fileData);
+    const allChunks: DocumentChunk[] = JSON.parse(fileData);
+    
+    // Filter chunks by the current user's ID
+    const chunks = allChunks.filter(c => c.userId === user.id);
 
     const docMap = new Map<string, { id: string, name: string, createdAt: string }>();
     

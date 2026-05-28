@@ -55,7 +55,8 @@ export async function generateEmbeddings(chunks: DocumentChunk[]): Promise<Chunk
       text: chunk.text,
       vector,
       metadata: chunk.metadata,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      userId: chunk.userId
     });
   }
 

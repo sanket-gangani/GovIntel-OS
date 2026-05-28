@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchEmbeddings } from "@/lib/rag/retrieval";
 import { SearchResponse } from "@/lib/rag/types";
+import { getUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json<SearchResponse>(
+        { success: false, query: "", results: [], error: "Unauthorized." },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { query, topK = 5, tagFilter, documentFilter } = body;
 
@@ -19,7 +28,7 @@ export async function POST(req: NextRequest) {
     if (tagFilter) fetchCount = topK * 4;
     if (documentFilter) fetchCount = topK * 10; // Fetch significantly more since we are narrowing down to one document
 
-    let results = await searchEmbeddings(query, fetchCount, 0.02); // lower similarity threshold to get more candidates before filtering
+    let results = await searchEmbeddings(query, fetchCount, 0.02, user.id); // lower similarity threshold to get more candidates before filtering
 
     // Apply server-side tag filtering if requested
     if (tagFilter && typeof tagFilter === "string") {

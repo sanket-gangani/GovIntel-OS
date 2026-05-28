@@ -68,7 +68,8 @@ function deriveTags(text: string): string[] {
 export async function searchEmbeddings(
   query: string,
   topK: number = 5,
-  threshold: number = 0.05
+  threshold: number = 0.05,
+  userId?: string
 ): Promise<SearchResult[]> {
   if (!query || query.trim() === "") return [];
 
@@ -81,7 +82,14 @@ export async function searchEmbeddings(
   let chunkEmbeddings: ChunkEmbedding[] = [];
   try {
     const fileData = await readFile(EMBEDDINGS_FILE, "utf-8");
-    chunkEmbeddings = JSON.parse(fileData);
+    const allEmbeddings: ChunkEmbedding[] = JSON.parse(fileData);
+    
+    // Filter by userId if provided
+    if (userId) {
+      chunkEmbeddings = allEmbeddings.filter(e => e.userId === userId);
+    } else {
+      chunkEmbeddings = allEmbeddings;
+    }
   } catch (error) {
     console.error("Failed to read embeddings.json:", error);
     return [];

@@ -7,9 +7,18 @@ import { isSemanticallyValid } from "@/lib/rag/chunk-filter";
 import { chunkText, saveChunksLocally } from "@/lib/rag/chunker";
 import { generateEmbeddings, saveEmbeddingsLocally } from "@/lib/rag/embeddings";
 import { UploadResponse } from "@/lib/rag/types";
+import { getUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getUser();
+    if (!user) {
+      return NextResponse.json<UploadResponse>(
+        { success: false, message: "Unauthorized." },
+        { status: 401 }
+      );
+    }
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
@@ -37,6 +46,7 @@ export async function POST(req: NextRequest) {
 
     // Extract text from the PDF
     const extractedDocument = await extractTextFromPDF(buffer, file.name, file.size);
+    extractedDocument.userId = user.id;
 
     // 1. Clean the raw text before chunking
     extractedDocument.rawText = cleanText(extractedDocument.rawText);

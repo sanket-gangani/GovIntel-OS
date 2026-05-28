@@ -1,8 +1,5 @@
 import { DocumentChunk, ChunkEmbedding } from "./types";
 import { randomUUID } from "crypto";
-import { readFile, writeFile } from "fs/promises";
-import path from "path";
-import fs from "fs";
 import { pipeline, env } from "@xenova/transformers";
 
 // Disable local model caching to ensure we fetch correctly on the first run,
@@ -11,17 +8,16 @@ import { pipeline, env } from "@xenova/transformers";
 env.allowLocalModels = false;
 env.useBrowserCache = false;
 
-const EMBEDDINGS_FILE = path.join(process.cwd(), "data", "embeddings.json");
-
 // Singleton pipeline to ensure we only load the model once
 class EmbedderPipeline {
-  static task = "feature-extraction";
+  static task = "feature-extraction" as const;
   static model = "Xenova/all-MiniLM-L6-v2";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static instance: any = null;
 
-  static async getInstance(progress_callback?: Function) {
+  static async getInstance(progress_callback?: (progress: unknown) => void) {
     if (this.instance === null) {
-      this.instance = await pipeline(this.task as any, this.model, { progress_callback });
+      this.instance = await pipeline(this.task, this.model, { progress_callback });
     }
     return this.instance;
   }

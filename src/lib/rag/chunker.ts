@@ -1,17 +1,12 @@
 import { DocumentChunk, ExtractedDocument } from "./types";
 import { randomUUID } from "crypto";
-import { readFile, writeFile } from "fs/promises";
-import path from "path";
-import fs from "fs";
-
-const CHUNKS_FILE = path.join(process.cwd(), "data", "chunks.json");
 
 /**
  * Splits text into semantic chunks of ~500-700 characters.
  * It strictly tries to split on double newlines (paragraphs) or single newlines
  * to preserve semantic boundaries, falling back to sentence splitting only if necessary.
  */
-export function chunkText(document: ExtractedDocument, minChunkSize = 400, maxChunkSize = 800): DocumentChunk[] {
+export function chunkText(document: ExtractedDocument, maxChunkSize = 800): DocumentChunk[] {
   const text = document.rawText;
   const chunks: DocumentChunk[] = [];
   

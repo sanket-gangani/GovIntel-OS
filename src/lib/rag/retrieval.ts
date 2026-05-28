@@ -7,13 +7,14 @@ env.allowLocalModels = false;
 env.useBrowserCache = false;
 
 class SearchEmbedderPipeline {
-  static task = "feature-extraction";
+  static task = "feature-extraction" as const;
   static model = "Xenova/all-MiniLM-L6-v2";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static instance: any = null;
 
-  static async getInstance(progress_callback?: Function) {
+  static async getInstance(progress_callback?: (progress: unknown) => void) {
     if (this.instance === null) {
-      this.instance = await pipeline(this.task as any, this.model, { progress_callback });
+      this.instance = await pipeline(this.task, this.model, { progress_callback });
     }
     return this.instance;
   }
@@ -92,7 +93,7 @@ export async function searchEmbeddings(
       documentId: c.documentId,
       documentName: c.documentName,
       text: c.text,
-      vector: c.vector as number[], // Cast Json back to number[]
+      vector: c.vector as unknown as number[], // Cast Prisma Json → unknown → number[]
       createdAt: c.createdAt.toISOString(),
       userId: userId
     }));

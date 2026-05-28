@@ -33,3 +33,11 @@ export async function verifyToken(token: string): Promise<JwtPayload | null> {
     return null;
   }
 }
+
+import { cookies } from "next/headers";
+export async function getUser(): Promise<JwtPayload | null> {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("govintel-session")?.value;
+  if (!sessionCookie) return null;
+  return verifyToken(sessionCookie);
+}
